@@ -1,17 +1,24 @@
 import React from 'react'
 import { useState } from 'react'
+import API from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const Login = () => {
     const [showForm, setShowForm] = useState(false);
     const [isLogin, setIsLogin] = useState(true);
     const [formData, setFormData] = useState({
-        username: '',
+        name: '',
         email: '',
         password: '',
         confirmPassword: ''
     });
+    
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
+
     const [errors, setErrors] = useState({
-        username: '',
+        name: '',
         email: '',
         password: '',
         confirmPassword: ''
@@ -21,7 +28,7 @@ const Login = () => {
         setIsLogin(!isLogin);
         // Clear errors when toggling
         setErrors({
-            username: '',
+            name: '',
             email: '',
             password: '',
             confirmPassword: ''
@@ -46,15 +53,15 @@ const Login = () => {
     const validateForm = () => {
         let valid = true;
         const newErrors = {
-            username: '',
+            name: '',
             email: '',
             password: '',
             confirmPassword: ''
         };
 
         // Username validation (only for signup)
-        if (!isLogin && !formData.username.trim()) {
-            newErrors.username = 'Username is required';
+        if (!isLogin && !formData.name.trim()) {
+            newErrors.name = 'Username is required';
             valid = false;
         }
 
@@ -96,9 +103,49 @@ const Login = () => {
         if (validateForm()) {
             // Form is valid, proceed with login/signup
             console.log('Form submitted:', formData);
-            // Here you would typically make an API call
-            // For demo, we'll just show an alert
-            alert(isLogin ? 'Login successful!' : 'Account created successfully!');
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!validateForm()) return;
+                
+                setLoading(true);
+                
+                try {
+                    let response;
+                    
+                    if (isLogin) {
+                        // Login API call
+                        response = await API.post('/auth/login', {
+                            email: formData.email,
+                            password: formData.password
+                        });
+                    } else {
+                        // Register API call
+                        response = await API.post('/auth/register', {
+                            name: formData.name,
+                            email: formData.email,
+                            password: formData.password
+                        });
+                    }
+                    
+                    // Save token and user data
+                    localStorage.setItem('token', response.data.token);
+                    
+                    // Redirect to dashboard or home page
+                    navigate('/dashboard');
+                    
+                } catch (error) {
+                    setLoading(false);
+                    const errorData = error.response?.data;
+                    
+                    if (errorData?.errors) {
+                        // Handle validation errors from backend
+                        setErrors(errorData.errors);
+                    } else {
+                        // Handle other errors
+                        alert(errorData?.message || 'An error occurred. Please try again.');
+                    }
+                }
+            };
         }
     };
 
@@ -138,13 +185,13 @@ const Login = () => {
                                     <label className="block text-gray-700 text-sm font-medium mb-1">Username</label>
                                     <input
                                         type="text"
-                                        name="username"
+                                        name="name"
                                         placeholder="Username"
-                                        value={formData.username}
+                                        value={formData.name}
                                         onChange={handleChange}
-                                        className={`w-full border ${errors.username ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#AC2898] focus:border-transparent`}
+                                        className={`w-full border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#AC2898] focus:border-transparent`}
                                     />
-                                    {errors.username && <p className="text-red-500 text-xs mt-1">{errors.username}</p>}
+                                    {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
                                 </div>
                             )}
                             
@@ -189,14 +236,16 @@ const Login = () => {
                                 </div>
                             )}
 
-                            <button
-                                type="submit"
-                                className="w-full h-[45px] bg-gradient-to-r from-[#421B41] to-[#AC2898] text-white font-medium rounded-lg 
-                                hover:bg-gradient-to-r hover:from-[#AC2898] hover:to-[#421B41] transition-all duration-300
-                                shadow-md hover:shadow-[#421B41]/50 hover:scale-[1.01]"
-                            >
-                                {isLogin ? 'Login' : 'Sign Up'}
-                            </button>
+                            <Link to='/'>
+                                <button
+                                    type="submit"
+                                    className="w-full h-[45px] bg-gradient-to-r from-[#421B41] to-[#AC2898] text-white font-medium rounded-lg 
+                                    hover:bg-gradient-to-r hover:from-[#AC2898] hover:to-[#421B41] transition-all duration-300
+                                    shadow-md hover:shadow-[#421B41]/50 hover:scale-[1.01]"
+                                >
+                                    {isLogin ? 'Login' : 'Sign Up'}
+                                </button>
+                            </Link>
 
                             <div className="text-center text-sm text-gray-600 mt-4">
                                 {isLogin ? "Don't have an account?" : "Already have an account?"}
