@@ -1,19 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middlewares/authMiddleware');
 const {
   getTasks,
   createTask,
   updateTask,
   deleteTask
 } = require('../controllers/taskController');
+const { protect } = require('../middlewares/authMiddleware');
 
-router.route('/')
-  .get(protect, getTasks)
-  .post(protect, createTask);
+// Protect all /api/tasks routes
+router.use(protect);
 
-router.route('/:id')
-  .put(protect, updateTask)
-  .delete(protect, deleteTask);
+// Routes
+router.get('/', getTasks);          // GET all tasks for logged in user
+router.post('/', createTask);       // POST a new task
+router.put('/:id', updateTask);     // PUT to update a task
+router.delete('/:id', deleteTask);  // DELETE a task
 
 module.exports = router;

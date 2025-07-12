@@ -3,6 +3,7 @@ import './App.css'
 import Home from './Home'
 import Login from './Login'
 import TasksPage from './TasksPage'
+import TaskForm from './components/TaskForm';
 
 function App() {
   
@@ -13,6 +14,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/taskspage" element={<TasksPage />} />
+          <Route path="/TaskForm" element={<TaskForm />} />
         </Routes>
       </Router>
     </>

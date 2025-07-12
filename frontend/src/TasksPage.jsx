@@ -1,71 +1,128 @@
-import React, { useState } from 'react';
-import { FiFilter, FiCheck, FiEdit2, FiTrash2, FiClock, FiFlag } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { FiFilter, FiCheck, FiEdit2, FiTrash2, FiClock, FiFlag, FiPlus } from 'react-icons/fi';
 
 const TasksPage = () => {
-  // Sample tasks data
-  const [tasks, setTasks] = useState([
-    { id: 1, title: 'Complete project proposal', description: 'Finish and submit the client project proposal', urgency: 'high', completed: false },
-    { id: 2, title: 'Team meeting', description: 'Weekly team sync up', urgency: 'medium', completed: true },
-    { id: 3, title: 'Update documentation', description: 'Update API documentation for new features', urgency: 'low', completed: false },
-    { id: 4, title: 'Review pull requests', description: 'Review open PRs in the repository', urgency: 'high', completed: false },
-  ]);
-
+  const [tasks, setTasks] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [filterOpen, setFilterOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-
-  // Filter tasks based on urgency
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'all') return true;
-    return task.urgency === filter;
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    description: '',
+    urgency: 'low',
+  });
+  const [addingTask, setAddingTask] = useState(false);
+  const [addFormData, setAddFormData] = useState({
+    title: '',
+    description: '',
+    urgency: 'low',
   });
 
-  // Toggle task completion
-  // const toggleComplete = (taskId) => {
-  //   setTasks(tasks.map(task => 
-  //     task.id === taskId ? { ...task, completed: !task.completed } : task
-  //   ));
-  // };
-
-  // Delete task
-  const deleteTask = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-  };
-
-  // Fetch tasks
   const fetchTasks = async () => {
     try {
       let url = '/api/tasks';
       if (filter !== 'all') url += `?urgency=${filter}`;
-      
       const response = await axios.get(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
-      setTasks(response.data);
+      setTasks(Array.isArray(response.data) ? response.data : []);
     } catch (err) {
-      console.error(err.response.data.message);
+      console.error(err.response?.data?.message || err.message);
     }
   };
 
-  // Toggle task completion
+  useEffect(() => {
+    fetchTasks();
+  }, [filter]);
+
+  useEffect(() => {
+    if (editingTask) {
+      setEditFormData({
+        title: editingTask.title,
+        description: editingTask.description,
+        urgency: editingTask.urgency,
+      });
+    }
+  }, [editingTask]);
+
+  const toggleFilterOpen = () => setFilterOpen(prev => !prev);
+
+  const handleFilterChange = (value) => {
+    setFilter(value);
+    setFilterOpen(false);
+  };
+
   const toggleComplete = async (taskId) => {
     try {
-      const task = tasks.find(t => t.id === taskId);
+      const task = tasks.find(t => t._id === taskId);
+      if (!task) return;
+
       await axios.put(
         `/api/tasks/${taskId}`,
         { completed: !task.completed },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
       fetchTasks();
     } catch (err) {
-      console.error(err.response.data.message);
+      console.error(err.response?.data?.message || err.message);
     }
   };
+
+  const deleteTask = async (taskId) => {
+    try {
+      await axios.delete(`/api/tasks/${taskId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      fetchTasks();
+    } catch (err) {
+      console.error(err.response?.data?.message || err.message);
+    }
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const saveTaskChanges = async () => {
+    try {
+      await axios.put(
+        `/api/tasks/${editingTask._id}`,
+        editFormData,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      setEditingTask(null);
+      fetchTasks();
+    } catch (err) {
+      console.error(err.response?.data?.message || err.message);
+    }
+  };
+
+  const handleAddChange = (e) => {
+    const { name, value } = e.target;
+    setAddFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const saveNewTask = async () => {
+    try {
+      await axios.post(
+        '/api/tasks',
+        addFormData,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+      setAddingTask(false);
+      setAddFormData({ title: '', description: '', urgency: 'low' });
+      fetchTasks();
+    } catch (err) {
+      console.error(err.response?.data?.message || err.message);
+    }
+  };
+
+  const filteredTasks = tasks.filter(task => {
+    if (filter === 'all') return true;
+    return task.urgency === filter;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -74,45 +131,34 @@ const TasksPage = () => {
           <h1 className="text-3xl font-bold text-gray-800">
             <span className="text-[#AC2898]">My</span> Tasks
           </h1>
-          
-          {/* Filter dropdown */}
+
           <div className="relative">
-            <button className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50">
+            <button
+              onClick={toggleFilterOpen}
+              className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50"
+            >
               <FiFilter />
               <span>Filter</span>
             </button>
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-              <div className="py-1">
-                <button 
-                  onClick={() => setFilter('all')}
-                  className={`block px-4 py-2 text-sm w-full text-left ${filter === 'all' ? 'bg-[#FFEDED] text-[#AC2898]' : 'text-gray-700 hover:bg-gray-100'}`}
-                >
-                  All Tasks
-                </button>
-                <button 
-                  onClick={() => setFilter('high')}
-                  className={`block px-4 py-2 text-sm w-full text-left ${filter === 'high' ? 'bg-[#FFEDED] text-[#AC2898]' : 'text-gray-700 hover:bg-gray-100'}`}
-                >
-                  High Urgency
-                </button>
-                <button 
-                  onClick={() => setFilter('medium')}
-                  className={`block px-4 py-2 text-sm w-full text-left ${filter === 'medium' ? 'bg-[#FFEDED] text-[#AC2898]' : 'text-gray-700 hover:bg-gray-100'}`}
-                >
-                  Medium Urgency
-                </button>
-                <button 
-                  onClick={() => setFilter('low')}
-                  className={`block px-4 py-2 text-sm w-full text-left ${filter === 'low' ? 'bg-[#FFEDED] text-[#AC2898]' : 'text-gray-700 hover:bg-gray-100'}`}
-                >
-                  Low Urgency
-                </button>
+
+            {filterOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                {['all', 'high', 'medium', 'low'].map(level => (
+                  <button
+                    key={level}
+                    onClick={() => handleFilterChange(level)}
+                    className={`block px-4 py-2 text-sm w-full text-left ${
+                      filter === level ? 'bg-[#FFEDED] text-[#AC2898]' : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    {level === 'all' ? 'All Tasks' : `${level.charAt(0).toUpperCase() + level.slice(1)} Urgency`}
+                  </button>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Tasks list */}
         <div className="grid gap-4">
           {filteredTasks.length === 0 ? (
             <div className="text-center py-12">
@@ -120,15 +166,23 @@ const TasksPage = () => {
             </div>
           ) : (
             filteredTasks.map(task => (
-              <div 
-                key={task.id} 
-                className={`bg-white rounded-xl shadow-sm p-4 border-l-4 ${task.urgency === 'high' ? 'border-red-500' : task.urgency === 'medium' ? 'border-yellow-500' : 'border-green-500'} ${task.completed ? 'opacity-70' : ''}`}
+              <div
+                key={task._id}
+                className={`bg-white rounded-xl shadow-sm p-4 border-l-4 ${
+                  task.urgency === 'high'
+                    ? 'border-red-500'
+                    : task.urgency === 'medium'
+                    ? 'border-yellow-500'
+                    : 'border-green-500'
+                } ${task.completed ? 'opacity-70' : ''}`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex items-start gap-3">
-                    <button 
-                      onClick={() => toggleComplete(task.id)}
-                      className={`mt-1 flex-shrink-0 w-5 h-5 rounded-full border ${task.completed ? 'bg-[#AC2898] border-[#AC2898] text-white' : 'border-gray-300'}`}
+                    <button
+                      onClick={() => toggleComplete(task._id)}
+                      className={`mt-1 flex-shrink-0 w-5 h-5 rounded-full border ${
+                        task.completed ? 'bg-[#AC2898] border-[#AC2898] text-white' : 'border-gray-300'
+                      }`}
                     >
                       {task.completed && <FiCheck className="w-3 h-3 mx-auto" />}
                     </button>
@@ -137,23 +191,17 @@ const TasksPage = () => {
                         {task.title}
                       </h3>
                       <p className="text-sm text-gray-500 mt-1">{task.description}</p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${task.urgency === 'high' ? 'bg-red-100 text-red-800' : task.urgency === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-                          {task.urgency === 'high' ? <FiFlag className="w-3 h-3" /> : <FiClock className="w-3 h-3" />}
-                          {task.urgency} priority
-                        </span>
-                      </div>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button 
+                    <button
                       onClick={() => setEditingTask(task)}
                       className="p-2 text-gray-500 hover:text-[#AC2898] hover:bg-[#FFEDED] rounded-full"
                     >
                       <FiEdit2 className="w-4 h-4" />
                     </button>
-                    <button 
-                      onClick={() => deleteTask(task.id)}
+                    <button
+                      onClick={() => deleteTask(task._id)}
                       className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-full"
                     >
                       <FiTrash2 className="w-4 h-4" />
@@ -167,10 +215,71 @@ const TasksPage = () => {
 
         {/* Add new task button */}
         <div className="fixed bottom-6 right-6">
-          <button className="bg-[#AC2898] text-white p-4 rounded-full shadow-lg hover:bg-[#921f7a] transition-colors">
-            <span className="text-xl">+</span>
+          <button
+            onClick={() => setAddingTask(true)}
+            className="bg-[#AC2898] text-white p-4 rounded-full shadow-lg hover:bg-[#921f7a] transition-colors"
+          >
+            <FiPlus className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Add Task Modal */}
+        {addingTask && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Add New Task</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={addFormData.title}
+                    onChange={handleAddChange}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#AC2898] focus:border-[#AC2898]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    name="description"
+                    value={addFormData.description}
+                    onChange={handleAddChange}
+                    rows="3"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#AC2898] focus:border-[#AC2898]"
+                  ></textarea>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Urgency</label>
+                  <select
+                    name="urgency"
+                    value={addFormData.urgency}
+                    onChange={handleAddChange}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#AC2898] focus:border-[#AC2898]"
+                  >
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    onClick={() => setAddingTask(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveNewTask}
+                    className="px-4 py-2 bg-[#AC2898] text-white rounded-lg hover:bg-[#921f7a]"
+                  >
+                    Add Task
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Edit Task Modal */}
         {editingTask && (
@@ -180,24 +289,30 @@ const TasksPage = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                  <input 
-                    type="text" 
-                    defaultValue={editingTask.title}
+                  <input
+                    type="text"
+                    name="title"
+                    value={editFormData.title}
+                    onChange={handleEditChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#AC2898] focus:border-[#AC2898]"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                  <textarea 
-                    defaultValue={editingTask.description}
+                  <textarea
+                    name="description"
+                    value={editFormData.description}
+                    onChange={handleEditChange}
                     rows="3"
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#AC2898] focus:border-[#AC2898]"
                   ></textarea>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Urgency</label>
-                  <select 
-                    defaultValue={editingTask.urgency}
+                  <select
+                    name="urgency"
+                    value={editFormData.urgency}
+                    onChange={handleEditChange}
                     className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-[#AC2898] focus:border-[#AC2898]"
                   >
                     <option value="high">High</option>
@@ -206,13 +321,14 @@ const TasksPage = () => {
                   </select>
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
-                  <button 
+                  <button
                     onClick={() => setEditingTask(null)}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
+                    onClick={saveTaskChanges}
                     className="px-4 py-2 bg-[#AC2898] text-white rounded-lg hover:bg-[#921f7a]"
                   >
                     Save Changes
