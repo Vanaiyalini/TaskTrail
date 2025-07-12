@@ -175,7 +175,7 @@ const Header = ({ isAuthenticated, onLogout }) => {
           </li>
           <li>
             <Link
-              to="/about"
+              to="/AboutUs"
               className="text-gray-700 hover:bg-[#FFEDED] rounded-lg px-3 py-2"
             >
               About
@@ -201,7 +201,7 @@ const Header = ({ isAuthenticated, onLogout }) => {
           </li>
           <li>
             <Link
-              to="/profile"
+              to="/UserProfile"
               className="text-black hover:bg-[#FFEDED] rounded-lg px-3 py-2"
               onClick={handleProtectedLinkClick}
             >

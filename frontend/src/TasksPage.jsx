@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiFilter, FiCheck, FiEdit2, FiTrash2, FiClock, FiFlag, FiPlus } from 'react-icons/fi';
+import Footer from './components/Footer';
+import Header from './components/Header';
 
 const TasksPage = () => {
   const [tasks, setTasks] = useState([]);
@@ -126,6 +128,7 @@ const TasksPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header/>
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">
